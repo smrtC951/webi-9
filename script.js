@@ -36,8 +36,10 @@ const pageHTML = {
 	'webi:updates':`
 		<div style="padding: 10px;">
 			<h1>Updates to Webi 9</h1>
-			<p>Webi calculates updates using "9.X" for major updates, and "9.X.Y" for minor ones.</p>
+			<p>Webi calculates updates using the semantic versioning! View the Updates folder on the GitHub repository for earlier updates!</p>
 			<hr>
+			<h2>Version 0.1.0-alpha</h2>
+			<h3>October 16, 2026</h3>
 			<p>No updates yet..</p>
 			<br>
 			<button data-url="webi:home">Home</button>
