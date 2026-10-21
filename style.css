@@ -11,11 +11,26 @@
 	--nav-bg: #E4ECF7;
 }
 
+:root.default-theme {
+	--p-color: #000;
+	--bg: #000000;
+}
+:root.dark-theme {
+	--p-color: #fff;
+	--bg: #404040;
+}
+
 html, body {
 	font-family: Segoe UI;
 	background-color: #e3e3e3;
 	height: 100%;
+	margin: 0;
 	overflow: hidden;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
 }
 
 button {
@@ -44,12 +59,18 @@ button:disabled {
 	background-color: var(--nav-bg);
 	padding: 5px;
 	padding-top: 3px;
+	flex-shrink: 0;
+	margin: 10px 10px 0;
 }
 
 .body {
 	background-color: #fff;
 	box-sizing: border-box;
-	min-height: calc(100vh - 5px);
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	margin: 0px 10px 0;
 }
 
 .webiSearchBox {
@@ -61,25 +82,71 @@ button:disabled {
 	width: 50%;
 }
 
-#notifyUI {
-	z-index: 999;
-	opacity: 0.5;
-	background-color: #000;
-	color: #fff;
-	position: fixed;
-	bottom: 1vh;
-	right: 0;
-	width: 43vh;
-	height: auto;
-	min-height: 10%;
-	max-height: 80vh;
-	box-sizing: border-box;
-	overflow-y: auto;
-	overflow-wrap: everywhere;
+#notificationContainer {
+    position: fixed;
+    bottom: 15px;
+    right: 15px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    z-index: 9999;
+    width: min(43vh, calc(100vw - 30px));
 }
-#notifyUI h2 {
-	padding-left: 5px;
+
+.notifyUI {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+
+    z-index: 999;
+    background-color: rgba(0,0,0,0.5);
+	opacity: 1;
+    color: #fff;
+
+    min-height: 10%;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
 }
-#notifyUI p {
-	padding-left: 5px;
+.notifyUI h2 {
+    padding-left: 5px;
+}
+.notifyUI p {
+    padding-left: 5px;
+}
+
+.downloadUI {
+	position: relative;
+    width: 100%;
+    box-sizing: border-box;
+
+    z-index: 999;
+    background-color: rgba(0,0,0,0.5);
+	opacity: 1;
+    color: #fff;
+
+    min-height: 10%;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+}
+.downloadUI h2 {
+    padding-left: 5px;
+}
+.downloadUI p {
+    padding-left: 5px;
+}
+
+#slidesMenu {
+	height: 20vh;
+}
+#slidesMenu #mainProp {
+	height: 5vh;
+}
+#slidesMenu #propSlides {
+	height: 15vh;
+}
+
+#slidesUI {
+	height: 90vh;
 }

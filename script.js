@@ -14,8 +14,23 @@ let historyIndex = -1;
 let currentURL = null;
 let pageStatus = null;
 let bookmarks = loadData("webiBookmarks", []);
-let navTheme = loadData("navTheme", "default");
 let visitedPages = loadData("webiHistory", []);
+let currentWebiPoints = loadData("webiPoints", 0);
+let activeNotif = [];
+const maxNotif = 3;
+// setting values
+let navTheme = loadData("navTheme", "default");
+let notifMode = loadData("notifMode", "default");
+let browserTheme = loadData("browserTheme", "default");
+
+// some notif stuff
+let notificationContainer = document.getElementById("notificationContainer");
+
+if (!notificationContainer) {
+    notificationContainer = document.createElement("div");
+    notificationContainer.id = "notificationContainer";
+    document.body.appendChild(notificationContainer);
+}
 
 // localstorage stuff
 function saveData(key, data) {
@@ -27,7 +42,7 @@ function saveData(key, data) {
 		return false;
 	}
 }
-function loadData(key, fallback = null) {
+function loadData(key, fallback) {
 	try {
 		const saved = localStorage.getItem(key);
 		if (saved === null) {
@@ -38,6 +53,13 @@ function loadData(key, fallback = null) {
 		console.error("webi cannot load data: ", error);
 		return fallback;
 	}
+}
+
+// points stuff
+function editPoints(amount) {
+	currentWebiPoints = Math.max(0, currentWebiPoints + amount);
+	saveData("webiPoints", currentWebiPoints);
+	showNotifyUI("You received " + amount.toLocaleString() + " Webi Points!", "webiPoints");
 }
 
 // bookmark stuff
@@ -115,7 +137,7 @@ function renderBookmarks() {
     });
 }
 
-// theme stuff
+// settings stuff
 function applyTheme(theme) {
 	if (theme !== "default" && theme !== "blue" && theme !== "red" && theme !== "aero") {
 		theme = "default";
@@ -123,6 +145,65 @@ function applyTheme(theme) {
 	navTheme = theme;
 	document.documentElement.dataset.theme = theme;
 	saveData("navTheme", theme);
+}
+
+function applyBrowserTheme(theme) {
+	if (!theme) {
+		theme = "default";
+	}
+	browserTheme = theme;
+	if (browserTheme === "dark") {
+		document.documentElement.classList.toggle("dark-theme", browserTheme === "dark");
+	} else {
+		document.documentElement.classList.toggle("default-theme", browserTheme === "default");
+	}
+}
+
+function applySetting(setting) {
+	if (setting === "notif") {
+		const modes = ["default", "alert", "none"];
+		const currentIndex = modes.indexOf(notifMode);
+	
+		notifMode = modes[(currentIndex + 1) % modes.length];
+		saveData("notifMode", notifMode);
+		updateSettingsButton("notif");
+		if (notifMode !== "none") {
+			showNotifyUI(`Notification mode: ${notifMode}`, "notify");
+		}
+	} else if (setting === "browserTheme") {
+		const themes = ["default", "dark"];
+		const currentIndex = themes.indexOf(browserTheme);
+		
+		browserTheme = themes[(currentIndex + 1) % themes.length];
+		saveData("browserTheme", browserTheme);
+		updateSettingsButton("browserTheme");
+		applyBrowserTheme(browserTheme);
+		showNotifyUI(`Browser theme: ${browserTheme}`, "notify");
+	}
+};
+
+function updateSettingsButton(setting) {
+	if (setting === "notif") {
+		const button = document.querySelector('[data-setting="notif"]');
+		if (!button) return;
+
+		const labels = {
+			default: "Notification (Default)",
+			alert: "Notification (Alert)",
+			none: "Notification (None)"
+		};
+
+		button.textContent = labels[notifMode] || labels.default;
+	} else if (setting === "browserTheme") {
+		const button = document.querySelector('[data-setting="browserTheme"]');
+		if (!button) return;
+		
+		const labels = {
+			default: "Browser Theme (Default)",
+			dark: "Browser Theme (Dark)",
+		};
+		button.textContent = labels[browserTheme] || labels.default;
+	}
 }
 
 function setTheme(theme) {
@@ -218,17 +299,41 @@ const searchIndex = [
 
 // search engine functions/events
 function searchWebi(query) {
-	const searchTerm = query.trim().toLowerCase();
-	if (!searchTerm) {
-		return [];
-	}
-	return searchIndex.filter(function(page) {
-		return (
-		page.title.toLowerCase().includes(searchTerm) ||
-		page.url.toLowerCase().includes(searchTerm) ||
-		page.desc.toLowerCase().includes(searchTerm)
-		);
-	});
+	const cleanedQuery = query.trim().toLowerCase();
+	if (!cleanedQuery) return [];
+	
+	const queryWords = cleanedQuery.split(/\s+/);
+	return searchIndex
+		.map(item => {
+			const title = item.title.toLowerCase();
+			const url = item.url.toLowerCase();
+			const desc = item.desc.toLowerCase();
+			
+			let score = 0;
+			
+			if (title === cleanedQuery) {
+				score += 100;
+			} else if (title.startsWith(cleanedQuery)) {
+				score += 60;
+			} else if (title.includes(cleanedQuery)) {
+				score += 40;
+			}
+			if (url.includes(cleanedQuery)) {
+				score += 20;
+			}
+			if (desc.includes(cleanedQuery)) {
+				score += 10;
+			}
+			
+			for (const word of queryWords) {
+				if (title.includes(word)) {
+					score += 5;
+				}
+			}
+			return { ...item, score };
+		})
+		.filter(item => item.score > 0)
+		.sort((a, b) => b.score - a.score);
 };
 
 function renderSearchResults(query) {
@@ -283,25 +388,39 @@ function parseWebiURL(url) {
 }
 
 // them pages
-const pageHTML = {
-	// example site
-	'example.com':`
+const pageHTML = [
+	{ // example site
+		title: "example.com",
+		url: "example.com",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Example page</h1>
 			<p>This page is for example pages.</p>
 		</div>
-	`,
-	// bonus page!11
-	'bonus.com':`
+		`,
+	},
+	{ // bonus site
+		title: "Bonus Site!",
+		url: "bonus.com",
+		favicon: null,
+		searchable: false,
+		innerHTML:`
 		<div style="padding: 10px; background-color: #000000; height: 100vh; color: #ffffff;">
 			<h1>Bonus Page!</h1>
 			<p>You like bonuses, right? You found this secret page, so you deserve one!</p>
 			<br>
 			<button>Click me!</button>
 		</div>
-	`,
-	// webi pages
-	'webi:home':`
+		`,
+	},
+	{ // home site
+		title: "Webi 9",
+		url: "webi:home",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<img src="img/logo.png" style="height: 50px; width: 150px;">
 			<p>Welcome to Webi 9; an intranet browser! Elements from an earlier project of mine (FExplorer) will be in here!</p>
@@ -313,53 +432,87 @@ const pageHTML = {
 			<button data-url="webi:games">Games</button>
 			<button data-url="webi:updates">Updates</button>
 			<button data-url="webi:bookmarks">Bookmarks</button>
+			<button data-url="webi:settings">Settings</button>
 			<hr>
 			<p>Want to see some experiments? Click the button beside "Click me!"!</p>
 			<button id="butt">Click me!</button>
 			<button data-url="webi:experiment">Experiments</button>
 		</div>
-	`,
-	'webi:updates':`
+		`,
+	},
+	{ // updates site
+		title: "Webi Updates",
+		url: "webi:updates",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Updates to Webi 9</h1>
-			<p>Webi calculates updates using the semantic versioning! View the Updates folder on the GitHub repository for earlier updates!</p>
+			<p>Webi calculates updates using the semantic versioning! View the Releases section on the GitHub repository page for earlier updates!</p>
 			<hr>
-			<h2>Version 0.1.0</h2>
-			<h3>October 17, 2026</h3>
+			<h2>Version 0.2.0</h2>
+			<h3>October 21, 2026</h3>
 			<ul>
-				<li>Bookmark system!</li>
-				<li>More advanced History!</li>
-				<li>Settings is now functional and has some settings available to change!</li>
-				<li>Navigation bar themes are now available!</li>
-				<li>Some visual changes</li>
-				<li>Search engine system is now added!</li>
+				<li>Added an Office game!</li>
+				<li>Webi Points! - Where you can get points just from searching!</li>
+				<li>Added new Settings options, bugged though.</li>
+				<li>More experimental features! (only download works)</li>
+				<li>Added Webi Workspace, with an unfinished presentation program!</li>
 			</ul>
+			<p>There will be a patch update but enjoy the update for now!</p>
 			<br>
 			<button data-url="webi:home">Home</button>
 		</div>
-	`,
-	'webi:settings':`
+		`,
+	},
+	{ // settings page
+		title: "Webi Settings",
+		url: "webi:settings",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Settings</h1>
 			<p>Change your prefrences!</p>
 			<hr>
-			<h2>Appearance</h2>
+			<h2>Personalization</h2>
+			<h3>Navigation Color</h3>
 			<p>Choose your navigation color:</p>
 			<button data-theme="default">Default</button>
 			<button data-theme="blue">Blue</button>
 			<button data-theme="red">Red</button>
 			<button data-theme="aero">Aero</button>
 			<p id="currentTheme"></p>
+			<h3>Browser Theme</h3>
+			<p>Choose your browser theme</p>
+			<button data-setting="browserTheme">Browser Theme (Default)</button>
 			<hr>
-			<a href="#" data-url="webi:home">Return home</a>
+			<h2>Display</h2>
+			<h3>Visibility</h3>
+			<p>Click on a button you want to modify their setting.</p>
+			<button data-setting="notif">Notification (Default)</button>
+			<hr>
+			<button data-url="webi:home">Return Home</button>
 		</div>
-	`,
-	'webi:terminal':`
+		`,
+	},
+	{ // terminal site
+		title: "webi:terminal",
+		url: "webi:terminal",
+		favicon: null,
+		searchable: false,
+		innerHTML:`
 		<div style="background-color: #000000; height: 100vh; font-family: Consolas; color: #00FF00; display: flex;">
 			<p>WEBI TERMINAL // type "help" for commands</p>
 		</div>
-	`,
-	'webi:search':`
+		`,
+	},
+	{ // webi search engine
+		title: "Webi 9 Search!",
+		url: "webi:search",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<img src="img/logo.png" style="height: 50px; width: 150px;">
 			<br>
@@ -368,8 +521,14 @@ const pageHTML = {
 				<button id="webiSearchBtn" type="submit">Search!</button>
 			</form>
 		</div>
-	`,
-	'webi:search/results':`
+		`,
+	},
+	{ // webi search engine results
+		title: "Results",
+		url: "webi:search/results",
+		favicon: null,
+		searchable: false,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<img src="img/logo.png" style="height: 25px; width: 70px;">
 			<form id="webiSearchForm">
@@ -381,32 +540,63 @@ const pageHTML = {
 			<div id="searchResults"></div>
 		</div>
 		`,
-	'webi:experiment':`
+	},
+	{ // experimental site
+		title: "Webi Labs",
+		url: "webi:experiment",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>WEBI EXPERIMENT PAGE</h1>
-			<p>This site is for experimental features only. Try them out!</p>
+			<p>Try out exclusive features that are in development and may be added in the future!</p>
 			<hr>
-			<button id="notifyBtn">Notify Button</button>
+			<h2>Interface</h2>
+			<button data-lab="compact">Compact Notifications (Off)</button>
+			<p>Make notifications compact and smaller!</p>
 			<button id="downloadBtn">Download Button</button>
+			<p>Experiment with downloading!</p>
+			<hr>
+			<h2>Customization</h2>
+			<button data-lab="customNavBtn">Custom Navigation Button (Bookmarks)</button>
+			<p>Customize your 5th navigation button! Currently it's the Bookmark button but you can change it to other things!</p>
 		</div>
-	`,
-	'webi:bookmarks': `
-    <div style="padding: 10px;">
-        <h1>Bookmarks</h1>
-        <p>Your saved Webi sites.</p>
-        <div id="bookmarkList"></div>
-        <button data-url="webi:home">Home</button>
-    </div>
-	`,
-	'webi:history':`
+		`,
+	},
+	{ // bookmarks Site
+		title: "Webi Bookmarks",
+		url: "webi:bookmarks",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
+	    <div style="padding: 10px;">
+			<h1>Bookmarks</h1>
+			<p>Your saved Webi sites.</p>
+			<div id="bookmarkList"></div>
+			<button data-url="webi:home">Home</button>
+		</div>
+		`,
+	},
+	{ // history Site
+		title: "Webi History",
+		url: "webi:history",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Browsing History</h1>
 			<p>Your recently visited Webi pages.</p>
 			<button id="clearHistoryBtn">Clear History</button>
 			<div id="historyList"></div>
 		</div>
-	`,
-	'webi:games':`
+		`,
+	},
+	{ // gamez site
+		title: "Webi Games",
+		url: "webi:games",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Webi Games</h1>
 			<p>Play some cool games in Webi!</p>
@@ -421,18 +611,74 @@ const pageHTML = {
 			<hr>
 			<div id="gameBox" style="background-color: #f0f0f0; border: 1px solid var(--nav-bg); width: 50vh; height: 40vh;">
 			</div>
-	`,
-	'webi:points':`
+		`,
+	},
+	{ // pointz site
+		title: "Webi Points!",
+		url: "webi:points",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
 		<div style="padding: 10px;">
 			<h1>Webi Points</h1>
 			<p>Webi Points is a currency awarded for using Webi 9!</p>
+			<hr>
+			<p id="webiShow">If you're seeing this, the script probably broke.</p>
 		</div>
-	`,
-}
+		`,
+	},
+	{ // Webi Workspace Site
+		title: "Webi Workspace",
+		url: "webi:workspace",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
+		<div style="padding: 10px;">
+			<h1>Webi Workspace</h1>
+			<p>Webi Workspace is a set of programs just for you to work well!</p>
+			<hr>
+			<button data-url="webi:workspace/slides">Webi Slides</button>
+		</div>
+		`,
+	},
+	{ // Webi Slides
+		title: "Webi Slides",
+		url: "webi:workspace/slides",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
+		<div style="padding: 10px;">
+			<div id="slidesMenu">
+				<div id="mainProp">
+					<button>Insert</button>
+					<button>Draw</button>
+					<button>Design</button>
+					<button>Transition</button>
+					<button>Animations</button>
+					<button>Slide Show</button>
+					<button>Developer</button>
+					<button>Help</button>
+				</div>
+				<div id="propSlides">
+					<button>1</button>
+				</div>
+			</div>
+			<div id="slidesUI">
+			
+			</div>
+		</div>
+		`,
+	},
+]
 
 // load functions and/or procedures
 function getContentFromURL(sanitizedURL) {
-	return pageHTML[sanitizedURL] || null;
+	for (var i = 0; i < pageHTML.length; i++) {
+		if (pageHTML[i].url === sanitizedURL) {
+			return pageHTML[i].innerHTML;
+		}
+	}
+	return null;
 }
 
 // load page function
@@ -456,6 +702,7 @@ function loadPage(urlToLoad) {
 	setTimeout(() => {
 		if (content !== null) {
 			pageBody.innerHTML = content;
+			editPoints(5);
 		} else {
 			pageBody.innerHTML = `
 			<div style="padding: 10px;">
@@ -478,11 +725,13 @@ function loadPage(urlToLoad) {
 			if (label) {
 				label.textContent = "Current theme: " + navTheme;
 			}
+			updateSettingsButton();
 		}
 		if (pagePath === "webi:history") {
 			renderHistory();
 		}
 		updateBookmarkButton();
+		updatePointsNav();
 	}, 250);
 }
 
@@ -502,34 +751,71 @@ function navigate(url) {
 	loadPage(sanitizedURL);
 }
 
-// some other functions
+// notification function
+let notifyTimeout;
 function showNotifyUI(message, type) {
-	const notifyUI = document.createElement("div");
-	const heading = document.createElement("h2");
-	const p = document.createElement("p");
+	if (notifMode === "none") return;
+	if (notifMode === "alert") {
+		alert(`${message}`);
+		return;
+	}
+	if (activeNotif.length >= maxNotif) {
+		return;
+	}
 	
-	notifyUI.id = `notifyUI`;
-	// main text or information
+	const notifyUI = document.createElement("div");
+	notifyUI.id = `notifyUI-${Date.now()}-${Math.random()}`;
+	const heading = document.createElement("h2");
+	heading.id = "heading";
+	const p = document.createElement("p");
+	p.id = "p";
 	p.innerText = message;
 	
 	if (type === "warning") {
-		notifyUI.style.backgroundColor = "#ff0000";
+		notifyUI.style.backgroundColor = "rgba(255,0,0,0.5)";
 		heading.innerText = "Warning";
+	} else if (type === "webiPoints") {
+		notifyUI.style.backgroundColor = "rgba(3,161,252,0.5)";
+		heading.innerText = "Webi Points";
 	} else {
+		
 		heading.innerText = "Notification";
 	}
-	
+	notifyUI.classList.add("notifyUI");
 	notifyUI.appendChild(heading);
 	notifyUI.appendChild(p);
-	document.body.appendChild(notifyUI);
+	notificationContainer.appendChild(notifyUI);
+	
+	activeNotif.push(notifyUI);
 	
 	setTimeout(function() {
 		notifyUI.remove();
+		activeNotif = activeNotif.filter(
+			notif => notif !== notifyUI
+		);
 	}, 5000);
 }
 
-function showDownloadUI() {
-	console.log("hi");
+// download function
+function showDownloadUI(filename, amount) {
+	let time = (Math.random(1, 10) * 2000);
+	
+	const downloadUI = document.createElement("div");
+	downloadUI.id = `downloadUI`;
+	const heading = document.createElement("h2");
+	heading.id = "heading";
+	heading.textContent = `Downloading ${filename}...`;
+	const p = document.createElement("p");
+	p.id = "p";
+	p.textContent = `${amount} in ${(time / 1000)}`;
+	
+	downloadUI.appendChild(heading);
+	downloadUI.appendChild(p);
+	downloadUI.classList.add("downloadUI");
+	notificationContainer.appendChild(downloadUI);
+	setTimeout(function() {
+		downloadUI.remove();
+	}, time);
 }
 
 function information() {
@@ -542,12 +828,91 @@ function information() {
 	// check
 	if (pageStatus === null) {
 		alert("bruh");
+	} else if (pageStatus === "unsafe") {
+		alert("This is an unsafe site. Be cautious.");
 	} else if (pageStatus === "safe") {
 		alert("This is a safe site!");
 	} else if (pageStatus === "webi safe") {
 		alert("This is a Webi-verified safe site!");
 	}
 };
+
+// game stuff :D
+function officeGame() {
+	let currentEmail = 0;
+	let earnedPoints = 0;
+	
+	const gameBox = document.getElementById("gameBox");
+	const emailText = document.createElement("p");
+	const approveBtn = document.createElement("button");
+	const deleteBtn = document.createElement("button");
+	const jobBtn = document.createElement("button");
+	const emails = [
+	{
+		type: "approve",
+		email: "approve test",
+	},
+	{
+		type: "delete",
+		email: "scam",
+	},
+	{
+		type: "approve",
+		email: "approve this burger",
+	},
+	];
+	
+	approveBtn.textContent = "Approve";
+	deleteBtn.textContent = "Delete";
+	jobBtn.textContent = "Quit";
+	
+	gameBox.appendChild(emailText);
+	gameBox.appendChild(approveBtn);
+	gameBox.appendChild(deleteBtn);
+	gameBox.appendChild(jobBtn);
+	
+	function showEmail() {
+		emailText.textContent = emails[currentEmail].email;
+	}
+	function nextEmail() {
+		currentEmail++;
+		
+		if (currentEmail >= emails.length) {
+			emailText.textContent = "Work finished! Score: " + earnedPoints;
+			approveBtn.disabled = true;
+			deleteBtn.disabled = true;
+			return;
+		}
+		showEmail();
+	}
+	
+	approveBtn.onclick = function() {
+		if (emails[currentEmail].type === "approve") {
+			alert("email approved!");
+			earnedPoints += 5;
+		} else {
+			alert("WRONG!!");
+			earnedPoints -= 5;
+		}
+		nextEmail();
+	};
+	deleteBtn.onclick = function() {
+		if (emails[currentEmail].type === "delete") {
+			alert("email deleted!");
+		} else {
+			alert("WRONG!!");
+			earnedPoints -= 5;
+		}
+		nextEmail();
+	};
+	jobBtn.onclick = function() {
+		alert("you quit your job!");
+		editPoints(earnedPoints);
+		earnedPoints = 0;
+	};
+	
+	showEmail();
+}
 
 function initGame(game) {
 	const gameBox = document.getElementById("gameBox");	
@@ -557,7 +922,12 @@ function initGame(game) {
 	loadingTxt.innerText = `Loading ${game}...`;
 	gameBox.appendChild(loadingTxt);
 	setTimeout(() => {
-		loadingTxt.innerText = `${game}`;
+		if (game === "office") {
+			loadingTxt.remove();
+			officeGame();
+		} else {
+			loadingTxt.innerText = `${game}`;
+		}
 	}, 1200);
 }
 function stopGame() {
@@ -567,6 +937,24 @@ function stopGame() {
 		gameBox.replaceChildren();
 	}
 }
+
+// points stuff 2: electric bogaloo
+function updatePointsNav() {
+	const pointsBtn = document.getElementById("pointsBtn");
+	const webiShow = document.getElementById("webiShow");
+	if (pointsBtn) {
+		pointsBtn.textContent = `${currentWebiPoints.toLocaleString()} Webi Points`;
+	}
+	if (webiShow && pageBody && pageBody.contains(webiShow)) {
+		if (currentWebiPoints < 0) {
+			webiShow.textContent = `How are you in debt? You have ${currentWebiPoints.toLocaleString()} Webi Points.`;
+		} else if (currentWebiPoints < 100) {
+			webiShow.textContent = `You have ${currentWebiPoints.toLocaleString()} Webi Points. Save up!`;
+		} else {
+			webiShow.textContent = `You have ${currentWebiPoints.toLocaleString()} Webi Points.`;
+		}
+	}
+};
 
 // page-based events
 function attachDyamicEventListeners() {
@@ -603,14 +991,20 @@ pageBody.addEventListener("click", function(event) {
 		}
 	}
 	if (currentURL !== null && currentURL === "webi:settings") {
-		const button = event.target.closest("[data-theme]");
-		if (!button || !pageBody.contains(button)) return;
-		setTheme(button.dataset.theme);
 		
-		const label = document.getElementById("currentTheme");
-
-		if (label) {
+		// theme setting
+		const datathemeBtn = event.target.closest("[data-theme]");
+		if (datathemeBtn && pageBody.contains(datathemeBtn)) {
+			setTheme(datathemeBtn.dataset.theme);
+			const label = document.getElementById("currentTheme");
+			if (label) {
 			label.textContent = "Current theme: " + navTheme;
+			}
+		}
+		// other settings
+		const settingBtn = event.target.closest("[data-setting]");
+		if (settingBtn && pageBody.contains(settingBtn)) {
+			applySetting(settingBtn.dataset.setting);
 		}
 	};
 	if (currentURL !== null && currentURL === "webi:history") {
@@ -624,7 +1018,7 @@ pageBody.addEventListener("click", function(event) {
 	};
 	if (currentURL !== null && currentURL === "webi:games") {
 		if (event.target.id !== "exitBtn") {
-			const button = event.target.closest("[data-game");
+			const button = event.target.closest("[data-game]");
 			if (!button) return;
 		
 			const gameDiv = document.getElementById("gameDiv");
@@ -647,6 +1041,7 @@ pageBody.addEventListener("click", function(event) {
 		}
 	}
 });
+
 // pagebody submit
 pageBody.addEventListener("submit", function(event) {
 	if (event.target.id !== "webiSearchForm") return;
