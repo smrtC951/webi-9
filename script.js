@@ -148,63 +148,47 @@ function applyTheme(theme) {
 }
 
 function applyBrowserTheme(theme) {
-	if (!theme) {
-		theme = "default";
-	}
-	browserTheme = theme;
-	if (browserTheme === "dark") {
-		document.documentElement.classList.toggle("dark-theme", browserTheme === "dark");
-	} else {
-		document.documentElement.classList.toggle("default-theme", browserTheme === "default");
-	}
+    if (theme !== "default" && theme !== "dark" && theme !== "webiBlue") {
+        theme = "default";
+    }
+
+    browserTheme = theme;
+
+    const root = document.documentElement;
+    root.classList.remove("dark-theme", "default-theme", "webi-blue-theme");
+
+    if (browserTheme === "dark") {
+        root.classList.add("dark-theme");
+	} else if (browserTheme === "webiBlue") {
+		root.classList.add("webi-blue-theme");
+    } else {
+        root.classList.add("default-theme");
+    }
 }
 
-function applySetting(setting) {
-	if (setting === "notif") {
-		const modes = ["default", "alert", "none"];
-		const currentIndex = modes.indexOf(notifMode);
-	
-		notifMode = modes[(currentIndex + 1) % modes.length];
-		saveData("notifMode", notifMode);
-		updateSettingsButton("notif");
-		if (notifMode !== "none") {
-			showNotifyUI(`Notification mode: ${notifMode}`, "notify");
-		}
-	} else if (setting === "browserTheme") {
-		const themes = ["default", "dark"];
-		const currentIndex = themes.indexOf(browserTheme);
-		
-		browserTheme = themes[(currentIndex + 1) % themes.length];
-		saveData("browserTheme", browserTheme);
-		updateSettingsButton("browserTheme");
-		applyBrowserTheme(browserTheme);
-		showNotifyUI(`Browser theme: ${browserTheme}`, "notify");
-	}
-};
+function applySetting(setting, value) {
+    if (setting === "browserTheme") {
+        applyBrowserTheme(value);
+        saveData("browserTheme", browserTheme);
+        showNotifyUI("Browser theme: " + browserTheme, "notify");
 
-function updateSettingsButton(setting) {
-	if (setting === "notif") {
-		const button = document.querySelector('[data-setting="notif"]');
-		if (!button) return;
+    } else if (setting === "notifSelect") {
+        var modes = ["default", "alert", "none"];
 
-		const labels = {
-			default: "Notification (Default)",
-			alert: "Notification (Alert)",
-			none: "Notification (None)"
-		};
+        if (modes.indexOf(value) === -1) {
+            console.warn("Unknown notification mode:", value);
+            return;
+        }
 
-		button.textContent = labels[notifMode] || labels.default;
-	} else if (setting === "browserTheme") {
-		const button = document.querySelector('[data-setting="browserTheme"]');
-		if (!button) return;
-		
-		const labels = {
-			default: "Browser Theme (Default)",
-			dark: "Browser Theme (Dark)",
-		};
-		button.textContent = labels[browserTheme] || labels.default;
-	}
+        notifMode = value;
+        saveData("notifMode", notifMode);
+
+        if (notifMode !== "none") {
+            showNotifyUI("Notification mode: " + notifMode, "notify");
+        }
+    }
 }
+
 
 function setTheme(theme) {
 	applyTheme(theme);
@@ -450,16 +434,13 @@ const pageHTML = [
 			<h1>Updates to Webi 9</h1>
 			<p>Webi calculates updates using the semantic versioning! View the Releases section on the GitHub repository page for earlier updates!</p>
 			<hr>
-			<h2>Version 0.2.0</h2>
-			<h3>October 21, 2026</h3>
+			<h2>Version 0.2.1</h2>
+			<h3>October 23, 2026</h3>
 			<ul>
-				<li>Added an Office game!</li>
-				<li>Webi Points! - Where you can get points just from searching!</li>
-				<li>Added new Settings options, bugged though.</li>
-				<li>More experimental features! (only download works)</li>
-				<li>Added Webi Workspace, with an unfinished presentation program!</li>
+				<li>New Cursor Click game, with Office game being slightly updated</li>
+				<li>Fixed Settings functionality, with a new Webi Blue theme!</li>
 			</ul>
-			<p>There will be a patch update but enjoy the update for now!</p>
+			<p>More patch updates will follow but enjoy the update for now!</p>
 			<br>
 			<button data-url="webi:home">Home</button>
 		</div>
@@ -478,19 +459,23 @@ const pageHTML = [
 			<h2>Personalization</h2>
 			<h3>Navigation Color</h3>
 			<p>Choose your navigation color:</p>
-			<button data-theme="default">Default</button>
-			<button data-theme="blue">Blue</button>
-			<button data-theme="red">Red</button>
-			<button data-theme="aero">Aero</button>
+			<button data-setting="navTheme" data-theme="default">Default</button>
+			<button data-setting="navTheme" data-theme="blue">Blue</button>
+			<button data-setting="navTheme" data-theme="red">Red</button>
+			<button data-setting="navTheme" data-theme="aero">Aero</button>
 			<p id="currentTheme"></p>
 			<h3>Browser Theme</h3>
 			<p>Choose your browser theme</p>
-			<button data-setting="browserTheme">Browser Theme (Default)</button>
+			<button data-setting="browserTheme" data-theme="default">Default</button>
+			<button data-setting="browserTheme" data-theme="dark">Dark</button>
+			<button data-setting="browserTheme" data-theme="webiBlue">Webi Blue</button>
 			<hr>
 			<h2>Display</h2>
 			<h3>Visibility</h3>
 			<p>Click on a button you want to modify their setting.</p>
-			<button data-setting="notif">Notification (Default)</button>
+			<button data-setting="notifSelect" data-option="default">Notification</button>
+			<button data-setting="notifSelect" data-option="alert">Alert</button>
+			<button data-setting="notifSelect" data-option="none">None</button>
 			<hr>
 			<button data-url="webi:home">Return Home</button>
 		</div>
@@ -604,6 +589,8 @@ const pageHTML = [
 			<p>Basically there's a game box below the line, and you need to click the button below this text for the game box to start boxing!</p>
 			<div id="gameDiv" style="visibility: visible; z-index: 1;">
 				<button id="gameBtn" data-game="office">Work at an Office!</button>
+				<button id="gameBtn" data-game="cursor">Cursor Click</button>
+				<button disabled id="gameBtn" data-game="clickTraining">Click the Errors!</button>
 			</div>
 			<div id="exitDiv" style="visibility: hidden; z-index: 2;">
 				<button id="exitBtn">Stop Playing</button>
@@ -669,6 +656,19 @@ const pageHTML = [
 		</div>
 		`,
 	},
+	{ // notscam.com
+		title: "notscam.com",
+		url: "notscam.com",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
+		<div style="padding: 10px; font-family: Times New Roman; background-color: #dff000">
+			<h1>YOU JUST GOT FREE!!</h1>
+			<p>CLICK THE BUTTON BELOW TO REDEEM YOUR PRICE!!</p>
+			<button id="scam">CLICK ME!!!</button>
+		</div>
+		`,
+	},
 ]
 
 // load functions and/or procedures
@@ -725,7 +725,6 @@ function loadPage(urlToLoad) {
 			if (label) {
 				label.textContent = "Current theme: " + navTheme;
 			}
-			updateSettingsButton();
 		}
 		if (pagePath === "webi:history") {
 			renderHistory();
@@ -860,6 +859,14 @@ function officeGame() {
 		type: "approve",
 		email: "approve this burger",
 	},
+	{
+		type: "approve",
+		email: "yo bro approve this",
+	},
+	{
+		type: "delete",
+		email: "YOU JUST GOT FREE!! COPY THIS LINK ONTO THE URL: notscam.com",
+	},
 	];
 	
 	approveBtn.textContent = "Approve";
@@ -909,9 +916,67 @@ function officeGame() {
 		alert("you quit your job!");
 		editPoints(earnedPoints);
 		earnedPoints = 0;
+		stopGame();
 	};
 	
 	showEmail();
+}
+
+function cursorGame() {
+	let currentClicks = 0;
+	let clickMultiplier = 1;
+	let upgradeCost = 10;
+	
+	const gameBox = document.getElementById("gameBox");
+	const statsText = document.createElement("p");
+	const clickButton = document.createElement("button");
+	const upgradeButton = document.createElement("button");
+	const redeemButton = document.createElement("button");
+	
+	clickButton.textContent = "Click Me!";
+	upgradeButton.textContent = "Upgrade to " + (clickMultiplier + 0.5)
+	redeemButton.textContent = "Redeem";
+	redeemButton.disabled = true;
+	
+	gameBox.appendChild(statsText);
+	gameBox.appendChild(clickButton);
+	gameBox.appendChild(upgradeButton);
+	gameBox.appendChild(redeemButton);
+	
+	function updateText() {
+		statsText.textContent = "Clicks: " + currentClicks + " | Rate: " + clickMultiplier.toFixed(1) + "x per click";
+		upgradeButton.textContent = "Upgrade to " + (clickMultiplier + 0.5).toFixed(1) + "x (Cost: " + upgradeCost + ")";
+		upgradeButton.disabled = currentClicks < upgradeCost;
+		redeemButton.textContent = "Redeem (REQUIRES " + 1000 + "> CLICKS)";
+		redeemButton.disabled = currentClicks < 1000;
+	}
+	
+	clickButton.onclick = function() {
+		clickButton.textContent = "You clicked me!";
+		currentClicks += clickMultiplier;
+		updateText();
+		setTimeout(() => {
+			clickButton.textContent = "Click me!";
+		}, 500);
+	}
+	upgradeButton.onclick = function() {
+		if (currentClicks >= upgradeCost) {
+			currentClicks -= upgradeCost;
+			clickMultiplier = Math.round((clickMultiplier + 0.5) * 10) / 10;
+			upgradeCost += 10;
+			updateText();
+		};
+		updateText();
+	}
+	redeemButton.onclick = function() {
+		if (currentClicks >= 1000) {
+			editPoints(math.random(currentClicks));
+			currentClicks = 0;
+			clickMultiplier = 1;
+			upgradeCost = 10;
+			stopGame();
+		}
+	}
 }
 
 function initGame(game) {
@@ -925,6 +990,9 @@ function initGame(game) {
 		if (game === "office") {
 			loadingTxt.remove();
 			officeGame();
+		} else if (game === "cursor") {
+			loadingTxt.remove();
+			cursorGame();
 		} else {
 			loadingTxt.innerText = `${game}`;
 		}
@@ -989,24 +1057,36 @@ pageBody.addEventListener("click", function(event) {
 		if (event.target.id === "downloadBtn") {
 			showDownloadUI();
 		}
-	}
-	if (currentURL !== null && currentURL === "webi:settings") {
-		
-		// theme setting
-		const datathemeBtn = event.target.closest("[data-theme]");
-		if (datathemeBtn && pageBody.contains(datathemeBtn)) {
-			setTheme(datathemeBtn.dataset.theme);
-			const label = document.getElementById("currentTheme");
+	}	
+	if (currentURL === "webi:settings") {
+		var settingElement = event.target.closest("[data-setting]");
+
+		if (!settingElement || !pageBody.contains(settingElement)) {
+			return;
+		}
+
+		var setting = settingElement.getAttribute("data-setting");
+
+		if (setting === "navTheme") {
+			var theme = settingElement.getAttribute("data-theme");
+			setTheme(theme);
+			var label = document.getElementById("currentTheme");
 			if (label) {
-			label.textContent = "Current theme: " + navTheme;
+				label.textContent = "Current theme: " + navTheme;
 			}
+
+		} else if (setting === "browserTheme") {
+			var browserThemeValue =	settingElement.getAttribute("data-theme");
+			applySetting("browserTheme", browserThemeValue);
+
+		} else if (setting === "notifSelect") {
+			var mode = settingElement.getAttribute("data-option");
+			applySetting("notifSelect", mode);
+
+		} else {
+			console.warn("Unknown setting:", setting);
 		}
-		// other settings
-		const settingBtn = event.target.closest("[data-setting]");
-		if (settingBtn && pageBody.contains(settingBtn)) {
-			applySetting(settingBtn.dataset.setting);
-		}
-	};
+	}
 	if (currentURL !== null && currentURL === "webi:history") {
 		if (event.target.id !== "clearHistoryBtn") return;
 
@@ -1098,6 +1178,8 @@ document.getElementById("otherBtn").addEventListener("click", toggleBookmark);
 
 // main initialize
 attachDyamicEventListeners();
+applyTheme(navTheme);
+applyBrowserTheme(browserTheme);
 window.addEventListener("load", function() {
 	navigate("webi:home");
 });

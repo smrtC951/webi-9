@@ -13,16 +13,24 @@
 
 :root.default-theme {
 	--p-color: #000;
-	--bg: #000000;
+	--body-bg: #fff;
+	--bg: #e3e3e3;
 }
 :root.dark-theme {
 	--p-color: #fff;
-	--bg: #404040;
+	--body-bg: #404040;
+	--bg: #000000;
+}
+:root.webi-blue-theme {
+	--p-color: #667e8e;
+	--body-bg: #eff9ff;
+	--bg: #c2e8ff;
+	--nav-bg: #03a1fc;
 }
 
 html, body {
 	font-family: Segoe UI;
-	background-color: #e3e3e3;
+	background-color: var(--bg);
 	height: 100%;
 	margin: 0;
 	overflow: hidden;
@@ -64,7 +72,8 @@ button:disabled {
 }
 
 .body {
-	background-color: #fff;
+	background-color: var(--body-bg);
+	color: var(--p-color);
 	box-sizing: border-box;
 	flex: 1;
 	min-height: 0;
