@@ -10,22 +10,59 @@
 :root[data-theme="aero"] {
 	--nav-bg: #E4ECF7;
 }
+:root[data-theme="green"] {
+	--nav-bg: #03fc2a;
+}
+:root[data-theme="purple"] {
+	--nav-bg: #d514ff;
+}
 
 :root.default-theme {
 	--p-color: #000;
 	--body-bg: #fff;
 	--bg: #e3e3e3;
+	--button-bg: #f0f0f0;
+	--button-txt: #333;
+	--button-border: #bbb;
 }
 :root.dark-theme {
 	--p-color: #fff;
 	--body-bg: #404040;
 	--bg: #000000;
+	--button-bg: #404040;
+	--button-txt: #fff;
+	--button-border: #737373;
+	--button-hover: #737373;
 }
 :root.webi-blue-theme {
 	--p-color: #667e8e;
 	--body-bg: #eff9ff;
 	--bg: #c2e8ff;
 	--nav-bg: #03a1fc;
+	--button-bg: #eff9ff;
+	--button-txt: #667e8e;
+	--button-border: #667e8e;
+	--button-hover: #c2e8ff;
+}
+:root.webi-green-theme {
+	--p-color: #658169;
+	--body-bg: #e1ffe5;
+	--bg: #94ffa4;
+	--nav-bg: #03fc2a;
+	--button-bg: #e1ffe5;
+	--button-txt: #658169;
+	--button-border: #658169;
+	--button-hover: #94ffa4;
+}
+:root.halloween-theme {
+	--p-color: #fff;
+	--body-bg: #404040;
+	--bg: #000000;
+	--nav-bg: #ffb729;
+	--button-bg: #404040;
+	--button-txt: #fff;
+	--button-border: #ffb729;
+	--button-hover: #737373;
 }
 
 html, body {
@@ -44,9 +81,9 @@ body {
 button {
 	width: auto;
     height: 20px;
-    background-color: #f0f0f0;
-    color: #333;
-    border: 1px solid #bbb;
+    background-color: var(--button-bg);
+    color: var(--button-txt);
+    border: 1px solid var(--button-border);
     cursor: pointer;
     transition: background-color 0.2s ease;
     vertical-align: middle;
@@ -55,11 +92,11 @@ button {
     text-align: right;
 }
 button:hover {
-	background-color: #D9D9D9;
+	background-color: var(--button-hover);
 }
 button:disabled {
 	background-color: #878787;
-	border: 1px solid #333;
+	border: 1px solid var(--button-border);
 	cursor: not-allowed;
 }	
 
@@ -147,15 +184,34 @@ button:disabled {
 }
 
 #slidesMenu {
-	height: 20vh;
+	height: 12vh;
 }
 #slidesMenu #mainProp {
-	height: 5vh;
+	height: 4vh;
+    align-items: center;
+	display: flex;
+    padding-left: 5px;
+	gap: 5px;
+	background-color: var(--nav-bg);
 }
-#slidesMenu #propSlides {
-	height: 15vh;
+#slidesMenu #properties {
+	height: 8vh;
+	background-color: grey;
+	padding-left: 5px;
+	display: flex;
+	gap: 5px;
+	align-items: center;
 }
 
 #slidesUI {
-	height: 90vh;
+	display: flex;
+	height: 79vh;
+	justify-content: center;
+	align-items: center;
+}
+#slidesUI #slideCanvas {
+	height: 75vh;
+	aspect-ratio: 16 / 9;
+	background-color: grey;
+	margin: 0;
 }

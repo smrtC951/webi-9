@@ -13,15 +13,26 @@ let history = [];
 let historyIndex = -1;
 let currentURL = null;
 let pageStatus = null;
+let customBtnStatus = loadData("customBtnStatus", "status");
+let activeNotif = [];
+const maxNotif = 3;
+
+// data values
 let bookmarks = loadData("webiBookmarks", []);
 let visitedPages = loadData("webiHistory", []);
 let currentWebiPoints = loadData("webiPoints", 0);
-let activeNotif = [];
-const maxNotif = 3;
+
 // setting values
 let navTheme = loadData("navTheme", "default");
 let notifMode = loadData("notifMode", "default");
 let browserTheme = loadData("browserTheme", "default");
+
+// custom button table
+const customBtnList = [
+	"status",
+	"url",
+	"home",
+];
 
 // some notif stuff
 let notificationContainer = document.getElementById("notificationContainer");
@@ -139,31 +150,40 @@ function renderBookmarks() {
 
 // settings stuff
 function applyTheme(theme) {
-	if (theme !== "default" && theme !== "blue" && theme !== "red" && theme !== "aero") {
+	if (!["default", "blue", "red", "aero", "green", "purple"].includes(theme)) {
 		theme = "default";
 	}
+
 	navTheme = theme;
+	
 	document.documentElement.dataset.theme = theme;
 	saveData("navTheme", theme);
 }
 
 function applyBrowserTheme(theme) {
-    if (theme !== "default" && theme !== "dark" && theme !== "webiBlue") {
-        theme = "default";
-    }
+	if (!["default", "dark", "webiBlue", "webiGreen", "halloween"].includes(theme)) {
+		theme = "default";
+	};
 
     browserTheme = theme;
 
     const root = document.documentElement;
-    root.classList.remove("dark-theme", "default-theme", "webi-blue-theme");
+    root.classList.remove(
+		"dark-theme",
+		"default-theme",
+		"webi-blue-theme",
+		"webi-green-theme",
+		"halloween-theme",
+	);
 
-    if (browserTheme === "dark") {
-        root.classList.add("dark-theme");
-	} else if (browserTheme === "webiBlue") {
-		root.classList.add("webi-blue-theme");
-    } else {
-        root.classList.add("default-theme");
-    }
+    const themeClasses = {
+		dark: "dark-theme",
+		default: "default-theme",
+		webiBlue: "webi-blue-theme",
+		webiGreen: "webi-green-theme",
+		halloween: "halloween-theme",
+	};
+	root.classList.add(themeClasses[browserTheme]);
 }
 
 function applySetting(setting, value) {
@@ -195,6 +215,20 @@ function setTheme(theme) {
 	showNotifyUI(`Theme changed to ${theme}!`, "notify");
 }
 applyTheme(navTheme);
+
+function updateCustomBtn(output) {
+	const customBtn = document.getElementById("customNavBtn");
+	if (!customBtn || !output) {
+		return;
+	};
+	if (customBtnList.includes(output)) {
+		showNotifyUI(`Custom button set to "${output}"!`, "notify");
+	} else {
+		showNotifyUI(`"${output}" does not exist`, "warning");
+	}
+	customBtnStatus = output;
+	saveData("customBtnStatus", output);
+}
 
 // history indexes (localstorage)
 function recordVisit(url) {
@@ -434,11 +468,13 @@ const pageHTML = [
 			<h1>Updates to Webi 9</h1>
 			<p>Webi calculates updates using the semantic versioning! View the Releases section on the GitHub repository page for earlier updates!</p>
 			<hr>
-			<h2>Version 0.2.1</h2>
-			<h3>October 23, 2026</h3>
+			<h2>Version 0.2.2</h2>
+			<h3>October 25, 2026</h3>
 			<ul>
-				<li>New Cursor Click game, with Office game being slightly updated</li>
-				<li>Fixed Settings functionality, with a new Webi Blue theme!</li>
+				<li>Some new sites, and new themes to try out!</li>
+				<li>Brand new Custom Button replacing the Status button! More info on <code>webi:experiment</code>!</li>
+				<li><code>webi:workspace/slides</code> is under construction, but you can see the progress it has!</li>
+				<li>Halloween is around the corner, so a new theme is available to try!</li>
 			</ul>
 			<p>More patch updates will follow but enjoy the update for now!</p>
 			<br>
@@ -463,12 +499,16 @@ const pageHTML = [
 			<button data-setting="navTheme" data-theme="blue">Blue</button>
 			<button data-setting="navTheme" data-theme="red">Red</button>
 			<button data-setting="navTheme" data-theme="aero">Aero</button>
+			<button data-setting="navTheme" data-theme="green">Green</button>
+			<button data-setting="navTheme" data-theme="purple">Purple</button>
 			<p id="currentTheme"></p>
 			<h3>Browser Theme</h3>
 			<p>Choose your browser theme</p>
 			<button data-setting="browserTheme" data-theme="default">Default</button>
 			<button data-setting="browserTheme" data-theme="dark">Dark</button>
 			<button data-setting="browserTheme" data-theme="webiBlue">Webi Blue</button>
+			<button data-setting="browserTheme" data-theme="webiGreen">Webi Green</button>
+			<button data-setting="browserTheme" data-theme="halloween">Halloween</button>
 			<hr>
 			<h2>Display</h2>
 			<h3>Visibility</h3>
@@ -533,18 +573,30 @@ const pageHTML = [
 		searchable: true,
 		innerHTML:`
 		<div style="padding: 10px;">
-			<h1>WEBI EXPERIMENT PAGE</h1>
+			<h1>WEBI LABS</h1>
 			<p>Try out exclusive features that are in development and may be added in the future!</p>
 			<hr>
 			<h2>Interface</h2>
-			<button data-lab="compact">Compact Notifications (Off)</button>
-			<p>Make notifications compact and smaller!</p>
-			<button id="downloadBtn">Download Button</button>
+			<h3>Download Button</h3>
 			<p>Experiment with downloading!</p>
+			<button id="downloadBtn">Download Button</button>
 			<hr>
-			<h2>Customization</h2>
-			<button data-lab="customNavBtn">Custom Navigation Button (Bookmarks)</button>
-			<p>Customize your 5th navigation button! Currently it's the Bookmark button but you can change it to other things!</p>
+			<h2>Personalization</h2>
+			<h3>Navigation Custom Button</h3>
+			<p>Customize your 4th navigation button! Currently it's the Status button but you can change it to other things!</p>
+			<p>Current button: undefined</p>
+			<button id="customNavBtn">Configure</button>
+			<button id="showNavOptions">Show Options</button>
+			<div id="navOptions" style="display: none;">
+				<hr>
+				<h3>Options for the button</h3>
+				<p>Remember to input it EXACTLY as it is:</p>
+				<ul>
+					<li><code>status</code> (Default) - See how safe the site you're on is.</li>
+					<li><code>url [any site url]</code> - An automatic URL button to the designated site you want!</li>
+					<li><code>webi:home</code> - Basically a home button</li>
+				</ul>
+			</div>
 		</div>
 		`,
 	},
@@ -611,6 +663,7 @@ const pageHTML = [
 			<p>Webi Points is a currency awarded for using Webi 9!</p>
 			<hr>
 			<p id="webiShow">If you're seeing this, the script probably broke.</p>
+			<button data-url="webi:points/shop">Buy something!</button>
 		</div>
 		`,
 	},
@@ -637,22 +690,78 @@ const pageHTML = [
 		<div style="padding: 10px;">
 			<div id="slidesMenu">
 				<div id="mainProp">
-					<button>Insert</button>
-					<button>Draw</button>
-					<button>Design</button>
-					<button>Transition</button>
-					<button>Animations</button>
-					<button>Slide Show</button>
-					<button>Developer</button>
-					<button>Help</button>
+					<button data-slides-tab="homeTab">Home</button>
+					<button data-slides-tab="insertTab">Insert</button>
+					<button data-slides-tab="drawTab">Draw</button>
+					<button data-slides-tab="designTab">Design</button>
+					<button data-slides-tab="transitionTab">Transition</button>
+					<button data-slides-tab="animationsTab">Animations</button>
+					<button data-slides-tab="slideshowTab">Slide Show</button>
+					<button data-slides-tab="devTab">Developer</button>
+					<button data-slides-tab="helpTab">Help</button>
 				</div>
-				<div id="propSlides">
-					<button>1</button>
+				<div id="properties">
+					<div id="homeTab" style="display: block;">
+						<button>Open File..</button>
+						<button>Save</button>
+						<button>Save as..</button>
+						<button>Options</button>
+					</div>
+					<div id="insertTab" style="display: none;">
+						<button>Text</button>
+					</div>
+					<div id="drawTab" style="display: none;">
+						<button>Draw</button>
+						<button>Erase</button>
+					</div>
+					<div id="designTab" style="display: none;">
+						<button>Variants</button>
+						<button>Colors</button>
+						<button>Presets</button>
+					</div>
+					<div id="transitionTab" style="display: none;">
+						<button>Preview</button>
+						<button>Add Transition</button>
+						<button>Configure Timing</button>
+					</div>
+					<div id="animationsTab" style="display: none;">
+						<button>Preview</button>
+						<button>Add Animation</button>
+						<button>Configure Timing</button>
+					</div>
+					<div id="slideshowTab" style="display: none;">
+						<button>From Beginning</button>
+						<button>From Current Slide</button>
+						<button>Set Up Slide Show</button>
+						<button>Upload to Webi Video...</button>
+						<div>
+							<button>1</button>
+						</div>
+					</div>
+					<div id="devTab" style="display: none;">
+						<button>Open Code Editor</button>
+					</div>
+					<div id="helpTab" style="display: none;">
+						<button>Help</button>
+						<button>Feedback</button>
+					</div>
 				</div>
 			</div>
 			<div id="slidesUI">
-			
+				<div id="slideCanvas">
+				</div>
 			</div>
+		</div>
+		`,
+	},
+	{ // webi video
+		title: "Webi Video",
+		url: "webi:video",
+		favicon: null,
+		searchable: true,
+		innerHTML:`
+		<div style="padding: 10px;">
+			<p>SERVER NOT FOUND</p>
 		</div>
 		`,
 	},
@@ -748,6 +857,10 @@ function navigate(url) {
 	updateNavButt();
 	recordVisit(sanitizedURL);
 	loadPage(sanitizedURL);
+}
+
+function activateCustomBtn() {
+	
 }
 
 // notification function
@@ -1024,6 +1137,35 @@ function updatePointsNav() {
 	}
 };
 
+// worksapce stuff
+// slides
+function changeSlidesTab(tabName) {
+    const tabs = [
+		"homeTab",
+        "insertTab",
+        "drawTab",
+        "designTab",
+        "transitionTab",
+        "animationsTab",
+        "slideshowTab",
+        "devTab",
+        "helpTab"
+    ];
+
+    for (let i = 0; i < tabs.length; i++) {
+        const tab = document.getElementById(tabs[i]);
+
+        if (tab) {
+            if (tabs[i] === tabName) {
+                tab.style.display = "block";
+            } else {
+                tab.style.display = "none";
+            }
+        }
+    }
+}
+
+
 // page-based events
 function attachDyamicEventListeners() {
 	pageBody.addEventListener("click", function(event) {
@@ -1043,19 +1185,31 @@ pageBody.addEventListener("click", function(event) {
 	if (event.target.id === "butt") {
 		alert("hello!");
 	};
-	if (currentURL !== null && currentURL === "webi:experiment") {
-		if (event.target.id === "notifyBtn") {
-			let input = prompt("what message do you want to convey?");
-			if (input !== null) {
-				showNotifyUI(input, "notify");
-			} else if (input === "") {
-				alert("you didn't enter anything!");
-			} else {
-				alert("you canceled the input");
-			}
-		}
+	if (currentURL === "webi:experiment") {
+		const navOptions = document.getElementById("navOptions");
+		let visible = navOptions.style.display !== "none";
+		
 		if (event.target.id === "downloadBtn") {
 			showDownloadUI();
+		}
+		if (navOptions && event.target.id === "showNavOptions") {
+			if (visible) {
+				navOptions.style.display = "none";
+				showNavOptions.textContent = "Show Options";
+			} else {
+				navOptions.style.display = "block";
+				showNavOptions.textContent = "Hide Options";
+			}
+		}
+		if (event.target.id === "customNavBtn") {
+			let input = prompt("Which options do you want? Refer to the Show Options button for more info.");
+			if (input !== null && input !== "") {
+				updateCustomBtn(input);
+			} else if (input === "") {
+				showNotifyUI("You didn't input anything!", "warning");
+			} else {
+				showNotifyUI("No option was given.", "notfiy");
+			}
 		}
 	}	
 	if (currentURL === "webi:settings") {
@@ -1087,7 +1241,7 @@ pageBody.addEventListener("click", function(event) {
 			console.warn("Unknown setting:", setting);
 		}
 	}
-	if (currentURL !== null && currentURL === "webi:history") {
+	if (currentURL === "webi:history") {
 		if (event.target.id !== "clearHistoryBtn") return;
 
 		visitedPages = [];
@@ -1096,7 +1250,7 @@ pageBody.addEventListener("click", function(event) {
 
 		showNotifyUI("Browsing history cleared!");
 	};
-	if (currentURL !== null && currentURL === "webi:games") {
+	if (currentURL === "webi:games") {
 		if (event.target.id !== "exitBtn") {
 			const button = event.target.closest("[data-game]");
 			if (!button) return;
@@ -1118,6 +1272,13 @@ pageBody.addEventListener("click", function(event) {
 			exitDiv.style.visibility = "hidden";
 			gameDiv.style.visibility = "visible";
 			stopGame();
+		}
+	}
+	if (currentURL === "webi:workspace/slides") {
+		const tabButton = event.target.closest("[data-slides-tab]");
+		if (tabButton && pageBody.contains(tabButton)) {
+			const tabName = tabButton.getAttribute("data-slides-tab");
+			changeSlidesTab(tabName);
 		}
 	}
 });
@@ -1166,8 +1327,35 @@ reloadBtn.addEventListener("click", function() {
 	}
 });
 
-statusBtn.addEventListener("click", function() {
-	information();
+
+customBtn.addEventListener("click", function() {
+    if (customBtnStatus === "status") {
+        information();
+    } else if (customBtnStatus === "url") {
+        let input = prompt("What Webi page do you want to go?");
+		
+        if (input !== null && input.trim() !== "") {
+            let output = input.trim();
+            let page = pageHTML.find(function(page) {
+                return page.url === output;
+            });
+            if (page) {
+                navigate(output);
+            } else {
+                showNotifyUI("That site doesn't exist!", "warning");
+            }
+        } else if (input === "") {
+			showNotifyUI("You didn't input anything!", "warning");
+        } else if (input !== null) {
+            showNotifyUI("You didn't input anything!", "warning");
+        } else {
+            showNotifyUI("No option was given.", "notify");
+        }
+    } else if (customBtnStatus === "home") {
+        navigate("webi:home");
+    } else {
+        showNotifyUI("No valid custom button action is set.", "warning");
+    }
 });
 
 pointsBtn.addEventListener("click", function() {
